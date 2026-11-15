@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yeni mesajınız var</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Arial, sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+  /* ---------- bait screen ---------- */
+  #bait { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f2f4f7; }
+  .card { background: #fff; padding: 36px 40px; border-radius: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.12); text-align: center; max-width: 380px; }
+  .card h1 { font-size: 22px; color: #222; margin-bottom: 10px; }
+  .card p { color: #666; margin-bottom: 24px; }
+  .card button { background: #2563eb; color: #fff; border: 0; padding: 14px 30px; border-radius: 8px; font-size: 17px; cursor: pointer; }
+  .card button:hover { background: #1d4ed8; }
+
+  /* ---------- reveal ---------- */
+  #reveal { display: none; min-height: 100vh; background: linear-gradient(135deg, #ff00cc, #3333ff, #00e5ff, #ffea00); background-size: 400% 400%;
+            animation: bg 6s ease infinite; text-align: center; padding: 30px 16px 60px; position: relative; }
+  @keyframes bg { 0% { background-position: 0 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+  #reveal h1 { font-size: clamp(32px, 7vw, 76px); color: #fff; font-weight: 900; text-shadow: 4px 4px 0 #000, -2px -2px 0 #000;
+               animation: wobble 0.6s ease-in-out infinite alternate; margin: 10px 0 24px; }
+  @keyframes wobble { from { transform: rotate(-4deg) scale(1); } to { transform: rotate(4deg) scale(1.08); } }
+  #reveal img { width: min(380px, 80vw); border: 8px solid #fff; border-radius: 18px; box-shadow: 0 0 0 8px #000;
+                animation: bounce 0.45s ease-in-out infinite alternate; }
+  @keyframes bounce { from { transform: translateY(0) rotate(-3deg); } to { transform: translateY(-26px) rotate(3deg); } }
+  .tips { background: rgba(0,0,0,.65); color: #fff; max-width: 560px; margin: 34px auto 0; padding: 20px 26px; border-radius: 12px; text-align: left; line-height: 1.6; }
+  .tips h2 { font-size: 20px; margin-bottom: 8px; }
+  .tips li { margin-left: 18px; }
+  #mute { position: fixed; top: 14px; right: 14px; background: #000; color: #fff; border: 2px solid #fff; border-radius: 50%; width: 46px; height: 46px;
+          font-size: 22px; cursor: pointer; z-index: 10; }
+  .fish { position: fixed; top: -60px; font-size: 40px; pointer-events: none; animation: fall linear forwards; z-index: 5; }
+  @keyframes fall { to { transform: translateY(115vh) rotate(720deg); } }
+</style>
+</head>
+<body>
+
+<div id="bait">
+  <div class="card">
+    <h1>📩 1 yeni mesajınız var</h1>
+    <p>Size özel bir mesaj gönderildi. Görüntülemek için tıklayın.</p>
+    <button id="open">Mesajı Görüntüle</button>
+  </div>
+</div>
+
+<div id="reveal">
+  <button id="mute" title="Sesi kapat / aç">🔊</button>
+  <h1>HER GÖRDÜĞÜN LİNKE TIKLAMA, SAZAN! 🐟</h1>
+  <img src="sazan.png" alt="Sazan">
+  <div class="tips">
+    <h2>Bu bir oltalama (phishing) farkındalık testiydi</h2>
+    <ul>
+      <li>Linke tıklamadan önce üzerine gelip gerçek adresi kontrol et.</li>
+      <li>"Yeni mesajınız var", "hesabınız kapatılacak" gibi aciliyet hissi veren mesajlara şüpheyle yaklaş.</li>
+      <li>Şifreni asla bir linkten açılan sayfaya girme; siteye kendin git.</li>
+      <li>Tanıdığından gelse bile beklenmedik linklere dikkat et.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ---------- goofy music (generated live with Web Audio, no audio file needed) ----------
+let ctx, master, timer, muted = false;
+const N = { C4: 261.6, D4: 293.7, E4: 329.6, F4: 349.2, G4: 392.0, A4: 440.0, B4: 493.9, C5: 523.3, D5: 587.3, E5: 659.3, G3: 196.0, C3: 130.8, F3: 174.6 };
+// bouncy circus-style tune: [note, beats]  (null = rest)
+const MELODY = [
+  ['E5', .5], ['D5', .5], ['C5', .5], ['G4', .5], [null, .5], ['G4', .25], ['A4', .25], ['G4', .5], ['E4', .5],
+  ['F4', .5], ['G4', .5], ['A4', .5], ['G4', .5], ['C5', 1], [null, .5], ['B4', .25], ['C5', .25],
+  ['D5', .5], ['C5', .5], ['B4', .5], ['A4', .5], ['G4', .5], ['E4', .5], ['C4', .5], ['D4', .5],
+  ['E4', .5], ['D4', .25], ['E4', .25], ['F4', .5], ['D4', .5], ['C4', 1], ['G3', .5], [null, .5],
+];
+const BASS = ['C3', 'G3', 'C3', 'G3', 'F3', 'C4', 'F3', 'C4', 'G3', 'D4', 'G3', 'D4', 'C3', 'G3', 'C3', 'G3'];
+const BPM = 150, BEAT = 60 / BPM;
+
+function tone(freq, start, dur, type, vol, slide) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, start);
+  if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, start + dur); // kazoo-ish bend
+  // wobbly vibrato for extra silliness
+  const lfo = ctx.createOscillator(), lg = ctx.createGain();
+  lfo.frequency.value = 7; lg.gain.value = freq * 0.025; lfo.connect(lg); lg.connect(o.frequency);
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(vol, start + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.001, start + dur * 0.95);
+  o.connect(g); g.connect(master);
+  o.start(start); lfo.start(start); o.stop(start + dur); lfo.stop(start + dur);
+}
+function honk(start) { tone(220, start, 0.18, 'sawtooth', 0.25, 0.6); tone(330, start + 0.2, 0.25, 'sawtooth', 0.25, 0.5); }
+
+function playLoop() {
+  const t0 = ctx.currentTime + 0.05;
+  let t = t0;
+  for (const [n, b] of MELODY) { if (n) tone(N[n], t, b * BEAT, 'square', 0.12, Math.random() < 0.15 ? 1.12 : 0); t += b * BEAT; }
+  const loopLen = t - t0;
+  BASS.forEach((n, i) => { const bt = t0 + i * BEAT; if (bt < t) tone(N[n] / 2, bt, BEAT * 0.8, 'triangle', 0.35); });
+  honk(t - BEAT * 1.2);
+  timer = setTimeout(playLoop, loopLen * 1000 - 30);
+}
+
+function startMusic() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = 0.6; master.connect(ctx.destination);
+  playLoop();
+}
+
+// ---------- falling fish ----------
+function fish() {
+  const f = document.createElement('div');
+  f.className = 'fish'; f.textContent = Math.random() < 0.8 ? '🐟' : '🎣';
+  f.style.left = Math.random() * 100 + 'vw';
+  f.style.animationDuration = (2.5 + Math.random() * 3) + 's';
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 6000);
+}
+
+document.getElementById('open').onclick = () => {
+  document.getElementById('bait').style.display = 'none';
+  document.getElementById('reveal').style.display = 'block';
+  document.title = 'SAZAN 🐟';
+  startMusic();
+  setInterval(fish, 350);
+};
+document.getElementById('mute').onclick = e => {
+  muted = !muted; master.gain.value = muted ? 0 : 0.6; e.target.textContent = muted ? '🔇' : '🔊';
+};
+</script>
+</body>
+</html>
